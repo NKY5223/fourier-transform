@@ -41,7 +41,7 @@ const vertices_lib = {
 };
 
 /** @type {keyof vertices_lib} */
-const lib = "eighth_note";
+const lib = "pi";
 
 
 const vertices = vertices_lib[lib].data//.map(({ x, y }) => ({ x, y: -y })); // desmosify 
