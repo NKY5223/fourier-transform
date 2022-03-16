@@ -45,10 +45,10 @@ const lib = "pi";
 
 
 const vertices = vertices_lib[lib].data//.map(({ x, y }) => ({ x, y: -y })); // desmosify 
-canvas.width = bg.width = trail.width = vertices_lib[lib].w * 1.01;
-canvas.height = bg.height = trail.height = vertices_lib[lib].h * 1.01;
-const dw = 0.005 * vertices_lib[lib].w;
-const dh = 0.005 * vertices_lib[lib].h;
+canvas.width = bg.width = trail.width = vertices_lib[lib].w * 1.1;
+canvas.height = bg.height = trail.height = vertices_lib[lib].h * 1.1;
+const dw = 0.05 * vertices_lib[lib].w;
+const dh = 0.05 * vertices_lib[lib].h;
 
 function DFT(f) {
     return Complex.sum(vertices.map(({ x, y }, i) => Complex.expI(-TWO_PI * f * i / vertices.length).multSep(x, y))).multReal(1 / vertices.length);
