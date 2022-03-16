@@ -15,7 +15,7 @@ const trail = document.getElementById("trail");
 const ctxtrail = trail.getContext("2d");
 
 const TWO_PI = 2 * Math.PI;
-const prec = 100;
+const prec = 300;
 
 const vertices_lib = {
     pi: {
