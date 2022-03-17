@@ -47,13 +47,17 @@ c.forEach(({ c }) => c.calcPhase());
 
 /** @type {{ x: number, y: number }[]} */
 const trailHistory = [];
-const trailLength = 500;
+const trailLength = 1200;
 const ratio = 255 / trailLength;
 
 let t = 0;
 window.requestAnimationFrame(function render() {
     ctx.translate((canvas.width = window.innerWidth) / 2, (canvas.height = window.innerHeight) / 2);
     ctx.scale(1, -1);
+
+    // Fill background
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
 
     // #region Trail
     if (trailHistory.length) {
@@ -65,7 +69,7 @@ window.requestAnimationFrame(function render() {
         trailHistory.forEach(({ x, y }, i) => {
             i += trailLength - trailHistory.length;
             i *= ratio;
-            ctx.strokeStyle = `rgb(${i}, ${i}, ${i})`;
+            ctx.strokeStyle = `rgba(${i}, ${i}, ${i}, 1)`;
             ctx.lineTo(x, y);
             ctx.stroke();
             ctx.beginPath();
