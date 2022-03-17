@@ -88,6 +88,7 @@ window.requestAnimationFrame(function render() {
     // #region Trail
     if (trailHistory.length) {
         if (trailHistory.length > trailLength) trailHistory.splice(0, 1);
+        ctx.lineCap = "round";
         ctx.lineWidth = 3;
 
         ctx.beginPath();
