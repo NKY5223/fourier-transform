@@ -1,9 +1,4 @@
-/**
- * @type {HTMLCanvasElement}
- */
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-
+// #region Maths
 const TWO_PI = 2 * Math.PI;
 const prec = 300;
 
@@ -43,6 +38,36 @@ const c = new Array(Math.min(prec, vertices.length)).fill(0).map((_, i) => Math.
 c[0].c.multReal(0);
 c.forEach(({ c }) => c.calcMag());
 c.forEach(({ c }) => c.calcPhase());
+// #endregion
+
+
+/**
+ * @type {HTMLCanvasElement}
+ */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+
+const videoStream = new URLSearchParams(window.location.search).has("download") ? canvas.captureStream(0) : null;
+/** @type {CanvasCaptureMediaStreamTrack} */
+const canvasTrack = videoStream ? videoStream.getVideoTracks()[0] : null;
+if (canvasTrack) canvasTrack.getSettings().frameRate = 60;
+const mediaRecorder = videoStream ? new MediaRecorder(videoStream) : null;
+const chunks = videoStream ? [] : null;
+if (videoStream) {
+    mediaRecorder.addEventListener("dataavailable", e => {
+        chunks.push(e.data);
+    });
+    mediaRecorder.addEventListener("stop", e => {
+        const blob = new Blob(chunks, { type: "video/mp4" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "fourier.mp4";
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
 
 
 /** @type {{ x: number, y: number }[]} */
@@ -51,6 +76,7 @@ const trailLength = 1200;
 const ratio = 255 / trailLength;
 
 let t = 0;
+let recording = false;
 window.requestAnimationFrame(function render() {
     ctx.translate((canvas.width = window.innerWidth) / 2, (canvas.height = window.innerHeight) / 2);
     ctx.scale(1, -1);
@@ -108,6 +134,20 @@ window.requestAnimationFrame(function render() {
     dot({ re: 0, im: 0 }, 5);
     trailHistory.push({ x, y });
     // #endregion
+
+    if (videoStream) {
+        canvasTrack.requestFrame();
+    }
+    if (videoStream && !recording && t >= 1) {
+        mediaRecorder.start();
+        console.log("start");
+        recording = true;
+    }
+    if (videoStream && recording && t >= 2) {
+        console.log("stop");
+        mediaRecorder.stop();
+        return;
+    }
 
     t += 1 / 20 / 60;
     window.requestAnimationFrame(render);

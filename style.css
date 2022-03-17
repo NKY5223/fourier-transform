@@ -3,7 +3,7 @@ html {
     padding: 0;
     overflow: hidden;
 }
-canvas {
+canvas, video {
     position: absolute;
     top: 0;
     left: 0;
