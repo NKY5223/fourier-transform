@@ -3,16 +3,6 @@
  */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-/**
- * @type {HTMLCanvasElement}
- */
-const bg = document.getElementById("bg");
-const ctxbg = bg.getContext("2d");
-/**
- * @type {HTMLCanvasElement}
- */
-const trail = document.getElementById("trail");
-const ctxtrail = trail.getContext("2d");
 
 const TWO_PI = 2 * Math.PI;
 const prec = 300;
@@ -43,43 +33,62 @@ const vertices_lib = {
 /** @type {keyof vertices_lib} */
 const lib = "pi";
 
-
-const vertices = vertices_lib[lib].data//.map(({ x, y }) => ({ x, y: -y })); // desmosify 
-canvas.width = bg.width = trail.width = vertices_lib[lib].w * 1.1;
-canvas.height = bg.height = trail.height = vertices_lib[lib].h * 1.1;
-const dw = 0.05 * vertices_lib[lib].w;
-const dh = 0.05 * vertices_lib[lib].h;
+const vertices = vertices_lib[lib].data.map(({ x, y }) => ({ x, y: -y }));
 
 function DFT(f) {
     return Complex.sum(vertices.map(({ x, y }, i) => Complex.expI(-TWO_PI * f * i / vertices.length).multSep(x, y))).multReal(1 / vertices.length);
 }
 
-
-
-ctxbg.fillStyle = "#ffffff20";
-
-ctxbg.translate(dw, dh)
-ctxbg.beginPath();
-ctxbg.moveTo(vertices[0].x, vertices[1].y);
-vertices.forEach(({ x, y }) => ctxbg.lineTo(x, y));
-ctxbg.fill();
-
-
 const c = new Array(Math.min(prec, vertices.length)).fill(0).map((_, i) => Math.ceil(i / 2) * Math.pow(-1, i + 1)).map(n => ({ freq: n, c: DFT(n) }));
+c[0].c.multReal(0);
 c.forEach(({ c }) => c.calcMag());
+c.forEach(({ c }) => c.calcPhase());
+
+
+/** @type {{ x: number, y: number }[]} */
+const trailHistory = [];
+const trailLength = 500;
+const ratio = 255 / trailLength;
 
 let t = 0;
-
-ctxtrail.translate(dw, dh);
 window.requestAnimationFrame(function render() {
-    canvas.width = canvas.width;
+    ctx.translate((canvas.width = window.innerWidth) / 2, (canvas.height = window.innerHeight) / 2);
+    ctx.scale(1, -1);
+
+    // #region Trail
+    if (trailHistory.length) {
+        if (trailHistory.length > trailLength) trailHistory.splice(0, 1);
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(trailHistory[0].x, trailHistory[0].y);
+        trailHistory.forEach(({ x, y }, i) => {
+            i += trailLength - trailHistory.length;
+            i *= ratio;
+            ctx.strokeStyle = `rgb(${i}, ${i}, ${i})`;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        });
+        ctx.stroke();
+    }
+    // #endregion
+
+    // #region Main
     let x = 0;
     let y = 0;
-    const dot = ({ re, im }, r = 2, c = ctx) => (x += re, y += im, c.beginPath(), c.ellipse(x, y, r, r, 0, 0, TWO_PI), c.fill());
+    function dot({ re, im }, r = 2) {
+        x += re;
+        y += im;
+        ctx.beginPath();
+        ctx.ellipse(x, y, r, r, 0, 0, TWO_PI);
+        ctx.fill();
+    };
 
-    ctx.translate(dw, dh);
     ctx.fillStyle = "#20ffc040";
     ctx.strokeStyle = "#20ffc040";
+    ctx.lineWidth = 1;
     c.forEach(({ freq, c }) => {
         const d = Complex.expI(TWO_PI * freq * t).mult(c);
         ctx.beginPath();
@@ -93,23 +102,14 @@ window.requestAnimationFrame(function render() {
     });
     ctx.fillStyle = "#ffffff";
     dot({ re: 0, im: 0 }, 5);
-
-    ctxtrail.fillStyle = "#00000002";
-    ctxtrail.fillRect(-dw, -dh, trail.width, trail.height);
-    ctxtrail.fillStyle = "#ffffff";
-    dot({ re: 0, im: 0 }, 3, ctxtrail);
+    trailHistory.push({ x, y });
+    // #endregion
 
     t += 1 / 20 / 60;
     window.requestAnimationFrame(render);
 });
 
 function desmosify() {
-    function DFT(f) {
-        return Complex.sum(vertices.map(({ x, y }, i) => Complex.expI(-TWO_PI * f * i / vertices.length).multSep(x, -y))).multReal(1 / vertices.length);
-    }
-    const c = new Array(Math.min(prec, vertices.length)).fill(0).map((_, i) => Math.ceil(i / 2) * Math.pow(-1, i + 1)).map(n => DFT(n));
-    c.forEach(c => c.calcMag());
-    c.forEach(c => c.calcPhase());
-    console.log("0," + c.map((c, i) => i ? c.mag : 0).join());
-    console.log("0," + c.map((c, i) => i ? c.phase : 0).join());
+    console.log("0," + c.map(({ c }, i) => i ? c.mag : 0).join());
+    console.log("0," + c.map(({ c }, i) => i ? c.phase : 0).join());
 }
