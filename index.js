@@ -34,10 +34,10 @@ function DFT(f) {
     return Complex.sum(vertices.map(({ x, y }, i) => Complex.expI(-TWO_PI * f * i / vertices.length).multSep(x, y))).multReal(1 / vertices.length);
 }
 
-const c = new Array(Math.min(prec, vertices.length)).fill(0).map((_, i) => Math.ceil(i / 2) * Math.pow(-1, i + 1)).map(n => ({ freq: n, c: DFT(n) }));
-c[0].c.multReal(0);
-c.forEach(({ c }) => c.calcMag());
-c.forEach(({ c }) => c.calcPhase());
+const coeff = new Array(Math.min(prec, vertices.length)).fill(0).map((_, i) => Math.ceil(i / 2) * Math.pow(-1, i + 1)).map(n => ({ freq: n, c: DFT(n) }));
+coeff[0].c.multReal(0);
+coeff.forEach(({ c }) => c.calcMag());
+coeff.forEach(({ c }) => c.calcPhase());
 // #endregion
 
 
@@ -46,6 +46,10 @@ c.forEach(({ c }) => c.calcPhase());
  */
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+/**
+ * @type {HTMLInputElement}
+ */
+const follow = document.getElementById("follow");
 
 
 const videoStream = new URLSearchParams(window.location.search).has("download") ? canvas.captureStream(0) : null;
@@ -70,13 +74,29 @@ if (videoStream) {
 }
 
 
-/** @type {{ x: number, y: number }[]} */
+/** @type {Complex[]} */
 const trailHistory = [];
 const trailLength = 1200;
 const ratio = 255 / trailLength;
 
 let t = 0;
 let recording = false;
+let _scale = 0;
+let scale = 1;
+
+canvas.addEventListener("wheel", e => {
+    _scale = Math.min(Math.max(-10, _scale - e.deltaY / 125), 30);
+    scale = Math.pow(1.2, _scale);
+})
+
+/**
+ * @param {Complex} pos 
+ * @param {number} r 
+ */
+function circle({ re: x, im: y }, r) {
+    ctx.beginPath();
+    ctx.ellipse(x * scale, y * scale, r, r, 0, 0, TWO_PI);
+}
 window.requestAnimationFrame(function render() {
     ctx.translate((canvas.width = window.innerWidth) / 2, (canvas.height = window.innerHeight) / 2);
     ctx.scale(1, -1);
@@ -85,57 +105,58 @@ window.requestAnimationFrame(function render() {
     ctx.fillStyle = "#000000";
     ctx.fillRect(-canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
 
-    // #region Trail
+    const sums = Complex.sums(coeff.map(({ freq, c }) => Complex.expI(TWO_PI * freq * t).mult(c)));
+    const endSum = sums[sums.length - 1];
+    if (follow.checked) ctx.translate(-endSum.re * scale, -endSum.im * scale);
+    trailHistory.push(endSum);
+
+    // Trail
     if (trailHistory.length) {
         if (trailHistory.length > trailLength) trailHistory.splice(0, 1);
         ctx.lineCap = "round";
         ctx.lineWidth = 3;
 
         ctx.beginPath();
-        ctx.moveTo(trailHistory[0].x, trailHistory[0].y);
-        trailHistory.forEach(({ x, y }, i) => {
+        ctx.moveTo(trailHistory[0].re * scale, trailHistory[0].im * scale);
+        trailHistory.forEach(({ re, im }, i) => {
             i += trailLength - trailHistory.length;
             i *= ratio;
             ctx.strokeStyle = `rgba(${i}, ${i}, ${i}, 1)`;
-            ctx.lineTo(x, y);
+            ctx.lineTo(re * scale, im * scale);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(re * scale, im * scale);
         });
         ctx.stroke();
     }
-    // #endregion
 
-    // #region Main
-    let x = 0;
-    let y = 0;
-    function dot({ re, im }, r = 2) {
-        x += re;
-        y += im;
-        ctx.beginPath();
-        ctx.ellipse(x, y, r, r, 0, 0, TWO_PI);
-        ctx.fill();
-    };
-
+    // Main
     ctx.fillStyle = "#20ffc040";
-    ctx.strokeStyle = "#20ffc040";
+    ctx.strokeStyle = "#20ffc020";
     ctx.lineWidth = 1;
-    c.forEach(({ freq, c }) => {
-        const d = Complex.expI(TWO_PI * freq * t).mult(c);
-        ctx.beginPath();
-        ctx.ellipse(x, y, c.mag, c.mag, 0, 0, TWO_PI);
+
+    ctx.beginPath();
+    ctx.moveTo(sums[0].re, sums[0].re);
+    coeff.forEach(({ c }, i) => {
+        const sum = sums[i];
+        ctx.lineTo(sum.re * scale, sum.im * scale);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + d.re, y + d.im);
+        circle(sum, c.mag * scale);
         ctx.stroke();
-        dot(d);
+        ctx.beginPath();
+        circle(sum, 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(sum.re * scale, sum.im * scale);
     });
     ctx.fillStyle = "#ffffff";
-    dot({ re: 0, im: 0 }, 5);
-    trailHistory.push({ x, y });
-    // #endregion
+    ctx.beginPath();
+    circle(endSum, 5);
+    ctx.fill();
 
+
+    // recording
     if (videoStream) {
         canvasTrack.requestFrame();
     }
@@ -150,11 +171,13 @@ window.requestAnimationFrame(function render() {
         return;
     }
 
+    // return;
+
     t += 1 / 20 / 60;
     window.requestAnimationFrame(render);
 });
 
 function desmosify() {
-    console.log("0," + c.map(({ c }, i) => i ? c.mag : 0).join());
-    console.log("0," + c.map(({ c }, i) => i ? c.phase : 0).join());
+    console.log("0," + coeff.map(({ c }, i) => i ? c.mag : 0).join());
+    console.log("0," + coeff.map(({ c }, i) => i ? c.phase : 0).join());
 }

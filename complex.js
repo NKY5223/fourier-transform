@@ -32,6 +32,19 @@ class Complex {
         arr.forEach(sum.add, sum);
         return sum;
     }
+    /**
+     * @param {Complex[]} arr 
+     */
+    static sums(arr) {
+        const sum = new Complex();
+        /** @type {Complex[]} */
+        const sums = [sum.copy()];
+        arr.forEach(z => {
+            sum.add(z);
+            sums.push(sum.copy());
+        });
+        return sums;
+    }
 
     /**
      * @param {Complex} z 
@@ -73,6 +86,10 @@ class Complex {
      */
     static expI(n) {
         return new Complex(Math.cos(n), Math.sin(n));
+    }
+
+    copy() {
+        return new Complex(this.re, this.im);
     }
 
     calcMag() {
