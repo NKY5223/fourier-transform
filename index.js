@@ -198,6 +198,7 @@ window.requestAnimationFrame(function render() {
     // return;
 
     t += 1 / 20 / 60;
+    t %= 1;
     window.requestAnimationFrame(render);
 });
 // #endregion
